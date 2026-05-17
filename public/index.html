@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>行政書士試験 条文暗記・音声読み上げアプリ</title>
+    <!-- Google Fonts for Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container" class="app-container">
+        <!-- Floating Ambient Background Gradients -->
+        <div class="bg-glow bg-glow-1"></div>
+        <div class="bg-glow bg-glow-2"></div>
+
+        <!-- ================= HEADER ================= -->
+        <header id="app-header" class="app-header">
+            <div class="header-logo">
+                <span class="logo-icon">⚖️</span>
+                <div class="logo-text">
+                    <h1>条文読み上げ</h1>
+                    <span class="logo-sub">行政書士試験対策</span>
+                </div>
+            </div>
+            <div id="active-status" class="active-status">
+                <span class="status-indicator animate-pulse"></span>
+                <span id="status-text">待機中</span>
+            </div>
+        </header>
+
+        <!-- ================= MAIN VIEWPORT ================= -->
+        <main id="main-viewport" class="main-viewport">
+            
+            <!-- 1. SCREEN: TOP (SUBJECT SELECT) -->
+            <section id="screen-top" class="screen-view active">
+                <div class="section-intro">
+                    <h2>学習科目を選択</h2>
+                    <p>憲法、民法、行政法から暗記したい科目を選択してください。</p>
+                </div>
+                
+                <div class="subject-grid">
+                    <!-- 1-1. Constitution -->
+                    <button id="btn-subject-constitution" class="subject-card card-constitution" data-law="昭和二十一年憲法">
+                        <div class="card-glow"></div>
+                        <span class="card-icon">🏛️</span>
+                        <div class="card-content">
+                            <h3>日本国憲法</h3>
+                            <span class="card-badge">全103条</span>
+                            <p class="card-desc">国家の基本原則、人権保障、統治機構を学習します。</p>
+                        </div>
+                    </button>
+
+                    <!-- 1-2. Civil Law -->
+                    <button id="btn-subject-civil" class="subject-card card-civil" data-law="明治二十九年法律第八十九号">
+                        <div class="card-glow"></div>
+                        <span class="card-icon">🏠</span>
+                        <div class="card-content">
+                            <h3>民法</h3>
+                            <span class="card-badge">全1050条</span>
+                            <p class="card-desc">総則、物権、債権、親族、相続をインプットします。</p>
+                        </div>
+                    </button>
+
+                    <!-- 1-3. Administrative Law (Expands Submenu) -->
+                    <div class="subject-group-wrapper">
+                        <button id="btn-subject-admin" class="subject-card card-admin">
+                            <div class="card-glow"></div>
+                            <span class="card-icon">📜</span>
+                            <div class="card-content">
+                                <h3>行政法</h3>
+                                <span class="card-badge">主要5法</span>
+                                <p class="card-desc">試験配点の要。行政手続、不服審査、訴訟、地自法等。</p>
+                            </div>
+                            <span class="expand-arrow">▼</span>
+                        </button>
+
+                        <!-- Administrative Sub-laws List -->
+                        <div id="admin-sublaws-list" class="admin-sublaws-list">
+                            <!-- 行政手続法 -->
+                            <button class="sublaw-card" data-law="平成五年法律第八十八号">
+                                <span class="subcard-icon">📝</span>
+                                <div class="subcard-content">
+                                    <h4>行政手続法</h4>
+                                    <span class="subcard-badge">全46条</span>
+                                </div>
+                            </button>
+                            <!-- 行政不服審査法 -->
+                            <button class="sublaw-card" data-law="平成二十六年法律第六十八号">
+                                <span class="subcard-icon">🔍</span>
+                                <div class="subcard-content">
+                                    <h4>行政不服審査法</h4>
+                                    <span class="subcard-badge">全87条</span>
+                                </div>
+                            </button>
+                            <!-- 行政事件訴訟法 -->
+                            <button class="sublaw-card" data-law="昭和三十七年法律第百三十九号">
+                                <span class="subcard-icon">⚖️</span>
+                                <div class="subcard-content">
+                                    <h4>行政事件訴訟法</h4>
+                                    <span class="subcard-badge">全46条</span>
+                                </div>
+                            </button>
+                            <!-- 国家賠償法 -->
+                            <button class="sublaw-card" data-law="昭和二十二年法律第百二十五号">
+                                <span class="subcard-icon">🏢</span>
+                                <div class="subcard-content">
+                                    <h4>国家賠償法</h4>
+                                    <span class="subcard-badge">全6条</span>
+                                </div>
+                            </button>
+                            <!-- 地方自治法 -->
+                            <button class="sublaw-card" data-law="昭和二十二年法律第六十七号">
+                                <span class="subcard-icon">🗺️</span>
+                                <div class="subcard-content">
+                                    <h4>地方自治法</h4>
+                                    <span class="subcard-badge">主要条文</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. SCREEN: ARTICLE SELECTOR -->
+            <section id="screen-selector" class="screen-view">
+                <!-- Navigation -->
+                <div class="view-header">
+                    <button id="btn-back-to-top" class="btn-back">
+                        <span class="back-arrow">←</span> 科目選択へ
+                    </button>
+                    <span id="label-active-law" class="label-active-law">日本国憲法</span>
+                </div>
+
+                <!-- Live Loading Indicator -->
+                <div id="law-loading" class="law-loading hidden">
+                    <div class="spinner"></div>
+                    <p>e-Gov法令検索から最新データを取得しています...</p>
+                    <span class="loading-sub">（初回のみ数秒かかります。2回目以降は瞬時に読み込みます）</span>
+                </div>
+
+                <!-- Search & Filters -->
+                <div id="selector-controls" class="selector-controls">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="input-article-search" placeholder="条文番号または見出しで検索 (例: 94, 享有)">
+                        <button id="btn-clear-search" class="btn-clear-search hidden">×</button>
+                    </div>
+                </div>
+
+                <!-- Articles Tree List -->
+                <div id="law-structure-container" class="law-structure-container">
+                    <!-- Dynamic Collapsible Accordions go here -->
+                </div>
+            </section>
+
+            <!-- 3. SCREEN: LEARNING (READING & TTS) -->
+            <section id="screen-learning" class="screen-view">
+                <!-- Navigation -->
+                <div class="view-header" id="learning-header">
+                    <button id="btn-back-to-selector" class="btn-back">
+                        <span class="back-arrow">←</span> 条文選択へ
+                    </button>
+                    <div class="learning-meta">
+                        <span id="label-learning-law" class="label-law-tag">日本国憲法</span>
+                        <span id="label-learning-chapter" class="label-chapter-tag">第一章 天皇</span>
+                    </div>
+                </div>
+
+                <!-- Quick Article Swiper -->
+                <div class="article-swiper" id="learning-swiper">
+                    <button id="btn-prev-article" class="btn-swipe" title="前の条文へ">◀ 前の条文</button>
+                    <span id="label-learning-title" class="label-current-article">第一条</span>
+                    <button id="btn-next-article" class="btn-swipe" title="次の条文へ">次の条文 ▶</button>
+                </div>
+
+                <!-- Learning Viewport ( verbatims displayed here ) -->
+                <div class="reading-viewport-wrapper">
+                    <div id="reading-viewport" class="reading-viewport font-size-medium" data-font-size="medium">
+                        <!-- Verbatim article text wrapped in sentence spans goes here -->
+                        <div class="article-body-wrapper">
+                            <h2 id="article-view-title" class="article-view-title">第一条 <span id="article-view-caption">（天皇の地位、国民主権）</span></h2>
+                            <div id="article-view-content" class="article-view-content">
+                                <!-- Sentences dynamically injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ================= BOTTOM FLOAT PLAYER ================= -->
+        <footer id="floating-player" class="floating-player">
+            <!-- 1. Player Toggles & Options -->
+            <div class="player-options">
+                <!-- Font Size Controllers -->
+                <div class="font-size-control">
+                    <span class="control-label">文字サイズ</span>
+                    <div class="btn-group-toggle">
+                        <button id="btn-font-dec" class="btn-icon-pill" title="文字を小さく">A-</button>
+                        <span id="font-size-display" class="size-indicator">大</span>
+                        <button id="btn-font-inc" class="btn-icon-pill" title="文字を大きく">A+</button>
+                    </div>
+                </div>
+
+                <!-- Autoplay Toggle -->
+                <div class="toggle-control">
+                    <span class="control-label">連続自動再生</span>
+                    <label class="switch" for="switch-autoplay">
+                        <input type="checkbox" id="switch-autoplay" checked>
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
+
+                <!-- Focus Mode Toggle -->
+                <div class="toggle-control">
+                    <span class="control-label">集中読解</span>
+                    <label class="switch" for="switch-focus">
+                        <input type="checkbox" id="switch-focus">
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 2. Interactive Speed Control Slider -->
+            <div class="speed-control-row">
+                <div class="speed-slider-container">
+                    <span class="slider-label">再生速度</span>
+                    <input type="range" id="slider-speed" min="0.5" max="3.0" step="0.1" value="1.0">
+                    <span id="label-speed-value" class="speed-value">1.0x</span>
+                </div>
+                <div class="speed-presets">
+                    <button class="btn-preset-speed" data-speed="1.0">1.0x</button>
+                    <button class="btn-preset-speed" data-speed="1.5">1.5x</button>
+                    <button class="btn-preset-speed" data-speed="2.0">2.0x</button>
+                </div>
+            </div>
+
+            <!-- 3. Absolute Core Playback Buttons -->
+            <div class="player-controls">
+                <button id="btn-audio-stop" class="btn-player btn-stop" title="停止">
+                    <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6V6z"/></svg>
+                    <span>停止</span>
+                </button>
+                <button id="btn-audio-play" class="btn-player btn-play" title="再生">
+                    <svg id="play-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="pause-svg" class="hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    <span id="play-btn-text">再生</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Script Entrypoint -->
+    <script src="app.js"></script>
+</body>
+</html>
