@@ -616,9 +616,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
-    // --- Google High-Quality TTS Audio Engine ---
+    // --- Google High-Quality TTS Audio Engine (Server-side Proxied) ---
     function getTtsUrl(text) {
-        return `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+        return `/api/tts?text=${encodeURIComponent(text)}`;
     }
 
     function highlightSentence(index) {

@@ -250,6 +250,34 @@ app.get('/api/law', async (req, res) => {
     }
 });
 
+// REST API endpoint: TTS Proxy to safely request Google Translation TTS audio without facing CORS/Referrer blocks
+app.get('/api/tts', (req, res) => {
+    const text = req.query.text;
+    if (!text) {
+        return res.status(400).json({ error: "Missing 'text' parameter." });
+    }
+
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+
+    https.get(ttsUrl, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': 'https://translate.google.com/'
+        }
+    }, (googleRes) => {
+        if (googleRes.statusCode !== 200) {
+            console.error(`Google TTS returned status code ${googleRes.statusCode}`);
+            return res.status(googleRes.statusCode).send("Failed to fetch TTS from Google.");
+        }
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        googleRes.pipe(res);
+    }).on('error', (err) => {
+        console.error("Google TTS Proxy error:", err);
+        res.status(500).json({ error: "Failed to proxy TTS audio.", details: err.message });
+    });
+});
+
 // Fallback to serve SPA index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
