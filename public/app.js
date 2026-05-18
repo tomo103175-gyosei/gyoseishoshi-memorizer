@@ -533,6 +533,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text) return "";
         let result = text;
 
+        // 1. Convert Kanji Numerals followed by a space (e.g. 一　, 二　) into '第一号', '第二号'
+        result = result.replace(/(?<=^|[\s　])([一二三四五六七八九十百]+)([　\s])/g, (match, p1, p2) => {
+            return `第${p1}号${p2}`;
+        });
+
+        // 2. Convert Arabic Numerals followed by a space (e.g. 2　, ３ ) into '第二項', '第三項'
+        result = result.replace(/(?<=^|[\s　])([0-9０-９]+)([　\s])/g, (match, p1, p2) => {
+            return `第${p1}項${p2}`;
+        });
+
         const legalReplacements = [
             // Specific compound words with "項" or "号" must be processed first to avoid partial replacements!
             { pattern: /事項/g, replacement: 'じこう' },
