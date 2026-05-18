@@ -24,6 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Speech Engine Instance
     let currentUtterance = null;
 
+    // Silent Audio for Background Wake Lock
+    const SILENT_AUDIO_URI = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    const silentAudio = new Audio(SILENT_AUDIO_URI);
+    silentAudio.loop = true;
+
     // --- DOM Elements ---
     const screens = {
         top: document.getElementById('screen-top'),
@@ -410,25 +415,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Scroll reading viewport back to top
         readingViewport.scrollTop = 0;
+
+        // Update Media Session screen info
+        updateMediaSession();
     }
 
-    btnPrevArticle.addEventListener('click', () => {
+    function playPrevArticle() {
         if (activeArticleIndex > 0) {
             const autoPlayRestore = isPlaying;
             stopPlayback();
             loadArticle(activeArticleIndex - 1);
             if (autoPlayRestore) startPlayback();
         }
-    });
+    }
 
-    btnNextArticle.addEventListener('click', () => {
+    function playNextArticle() {
         if (activeArticleIndex < lawData.articles.length - 1) {
             const autoPlayRestore = isPlaying;
             stopPlayback();
             loadArticle(activeArticleIndex + 1);
             if (autoPlayRestore) startPlayback();
         }
-    });
+    }
+
+    btnPrevArticle.addEventListener('click', playPrevArticle);
+    btnNextArticle.addEventListener('click', playNextArticle);
 
     // --- Web Speech API (TTS Core Engine) ---
 
@@ -449,6 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeSentenceIndex === -1) {
             activeSentenceIndex = 0;
         }
+
+        // Start silent audio to maintain JS execution thread in background
+        silentAudio.play().catch(err => console.log("Silent audio autoplay prevented:", err));
+        
+        // Update Media Session state
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
+        }
+        updateMediaSession();
         
         speakSentence(activeSentenceIndex);
     }
@@ -464,6 +484,13 @@ document.addEventListener('DOMContentLoaded', () => {
         playBtnText.textContent = "再開";
 
         window.speechSynthesis.pause();
+        
+        // Pause silent audio to allow CPU to rest
+        silentAudio.pause();
+
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'paused';
+        }
     }
 
     function resumePlayback() {
@@ -477,6 +504,13 @@ document.addEventListener('DOMContentLoaded', () => {
         playBtnText.textContent = "一時停止";
 
         window.speechSynthesis.resume();
+        
+        // Resume silent audio
+        silentAudio.play().catch(err => console.log("Silent audio play failed on resume:", err));
+
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
+        }
     }
 
     function stopPlayback() {
@@ -498,6 +532,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         window.speechSynthesis.cancel();
+        
+        // Stop silent audio completely
+        silentAudio.pause();
+        silentAudio.currentTime = 0;
+
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'none';
+        }
     }
 
     // Helper: Correct Japanese legal terminology pronunciation for browser TTS
@@ -757,6 +799,46 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('focus-mode-active');
         }
     });
+
+    // --- Media Session Helper Functions ---
+    function updateMediaSession() {
+        if ('mediaSession' in navigator && lawData && activeArticleIndex !== -1) {
+            const art = lawData.articles[activeArticleIndex];
+            const lawNickname = getLawNickname(lawData.law_num);
+            
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: `${art.title} ${art.caption ? `（${art.caption}）` : ''}`,
+                artist: lawNickname,
+                album: '行政書士 条文暗記'
+            });
+        }
+    }
+
+    function setupMediaSessionHandlers() {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', () => {
+                if (isPaused) {
+                    resumePlayback();
+                } else if (!isPlaying) {
+                    startPlayback();
+                }
+            });
+            navigator.mediaSession.setActionHandler('pause', () => {
+                if (isPlaying && !isPaused) {
+                    pausePlayback();
+                }
+            });
+            navigator.mediaSession.setActionHandler('previoustrack', () => {
+                playPrevArticle();
+            });
+            navigator.mediaSession.setActionHandler('nexttrack', () => {
+                playNextArticle();
+            });
+        }
+    }
+
+    // Initialize Media Session Handlers
+    setupMediaSessionHandlers();
 
     // Cancel speech when leaving or closing tab
     window.addEventListener('beforeunload', () => {
