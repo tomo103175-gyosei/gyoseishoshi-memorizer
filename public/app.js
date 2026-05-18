@@ -470,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateMediaSession();
         
-        speakSentence(activeSentenceIndex);
+        speakFromIndex(activeSentenceIndex);
     }
 
     function pausePlayback() {
@@ -630,15 +630,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
-    function speakSentence(index) {
-        if (!isPlaying) return;
+    let sentenceCharRanges = []; // [{ index, start, end }]
+    
+    function prepareSpeechText(startIndex) {
+        sentenceCharRanges = [];
+        let accumulatedLength = 0;
+        let textParts = [];
+        
+        for (let i = startIndex; i < sentences.length; i++) {
+            let ttsText = correctPronunciation(sentences[i].text);
+            // Append punctuation and a small pause (space) for natural cadence
+            let part = ttsText + "。　"; 
+            
+            sentenceCharRanges.push({
+                index: i,
+                start: accumulatedLength,
+                end: accumulatedLength + part.length
+            });
+            textParts.push(part);
+            accumulatedLength += part.length;
+        }
+        
+        return textParts.join("");
+    }
 
-        window.speechSynthesis.cancel(); // Cancel current audio to prevent stack overlap
-
-        activeSentenceIndex = index;
-        const currentSentence = sentences[index];
-
-        // 1. DOM Highlight Switch
+    function highlightSentence(index) {
         document.querySelectorAll('.sentence').forEach(el => {
             el.classList.remove('active');
         });
@@ -646,54 +662,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeSpan = document.getElementById(`sentence-${index}`);
         if (activeSpan) {
             activeSpan.classList.add('active');
-            // Precise auto scroll to keep highlit sentence in middle of scrolling box
             activeSpan.scrollIntoView({
                 behavior: 'smooth',
                 block: 'center'
             });
         }
+    }
 
-        // 2. Speech Synthesis trigger
-        // Filter out formatting guides e.g. paragraph numbers for speech if redundant, 
-        // but verbatim reading is crucial, so we read verbatim text
-        let ttsText = correctPronunciation(currentSentence.text);
-        
-        // Custom reading adjustments for administrative scrivener studies (e.g. read "第1条" elegantly)
-        // Standard synthesis handles standard text elegantly, so we feed clean text
-        currentUtterance = new SpeechSynthesisUtterance(ttsText);
+    function speakFromIndex(index) {
+        if (!isPlaying) return;
+
+        window.speechSynthesis.cancel(); // Clear any ongoing speech
+
+        activeSentenceIndex = index;
+        const fullTtsText = prepareSpeechText(index);
+
+        currentUtterance = new SpeechSynthesisUtterance(fullTtsText);
         currentUtterance.lang = 'ja-JP';
         currentUtterance.rate = speechRate;
 
+        // Highlight first sentence initially
+        highlightSentence(index);
 
-        // Core Voice Engine Hooks
+        // Hook onboundary event to track active reading positions and highlight sentences in real-time
+        currentUtterance.onboundary = (event) => {
+            if (event.name === 'word' || event.name === 'sentence') {
+                const charIndex = event.charIndex;
+                const match = sentenceCharRanges.find(r => charIndex >= r.start && charIndex < r.end);
+                if (match && match.index !== activeSentenceIndex) {
+                    activeSentenceIndex = match.index;
+                    highlightSentence(match.index);
+                }
+            }
+        };
+
         currentUtterance.onend = () => {
             if (isPlaying && !isPaused) {
-                const nextIndex = index + 1;
-                if (nextIndex < sentences.length) {
-                    speakSentence(nextIndex);
-                } else {
-                    // Completed reading article
-                    if (autoplayEnabled) {
-                        // Advance to next article in database
-                        const nextArtIdx = activeArticleIndex + 1;
-                        if (nextArtIdx < lawData.articles.length) {
-                            loadArticle(nextArtIdx);
-                            // Brief delay for mobile rendering and auditory breathing pause
-                            setTimeout(() => {
-                                if (isPlaying) speakSentence(0);
-                            }, 800);
-                        } else {
-                            stopPlayback();
-                        }
+                // Completed reading entire article
+                if (autoplayEnabled) {
+                    // Advance to next article in database
+                    const nextArtIdx = activeArticleIndex + 1;
+                    if (nextArtIdx < lawData.articles.length) {
+                        loadArticle(nextArtIdx);
+                        // Brief delay for mobile rendering and auditory breathing pause
+                        setTimeout(() => {
+                            if (isPlaying) speakFromIndex(0);
+                        }, 800);
                     } else {
                         stopPlayback();
                     }
+                } else {
+                    stopPlayback();
                 }
             }
         };
 
         currentUtterance.onerror = (e) => {
-            // SpeechSynthesis errors can happen if cancelled, so we only handle serious errors
             if (e.error !== 'interrupted' && e.error !== 'canceled') {
                 console.error("SpeechSynthesis error:", e);
                 stopPlayback();
@@ -712,23 +736,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!lawData) return;
         const autoPlayRestore = isPlaying || isPaused;
         
-        // Update index
         activeSentenceIndex = index;
         
         if (autoPlayRestore) {
             isPlaying = true;
             isPaused = false;
-            startPlayback();
+            
+            statusPill.className = "active-status playing";
+            statusText.textContent = "読み上げ中";
+            btnPlay.classList.add('playing');
+            playSvg.classList.add('hidden');
+            pauseSvg.classList.remove('hidden');
+            playBtnText.textContent = "一時停止";
+
+            speakFromIndex(index);
         } else {
-            // If stopped, just highlight and scroll to let user read along
-            document.querySelectorAll('.sentence').forEach(el => {
-                el.classList.remove('active');
-            });
-            const activeSpan = document.getElementById(`sentence-${index}`);
-            if (activeSpan) {
-                activeSpan.classList.add('active');
-                activeSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            highlightSentence(index);
         }
     }
 
@@ -778,7 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Dynamic rate change if currently reading
         if (isPlaying && !isPaused && activeSentenceIndex !== -1) {
-            speakSentence(activeSentenceIndex);
+            speakFromIndex(activeSentenceIndex);
         }
     }
 
