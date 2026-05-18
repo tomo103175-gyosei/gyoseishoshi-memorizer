@@ -24,10 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Speech Engine Instance
     let currentUtterance = null;
 
-    // Silent Audio for Background Wake Lock
-    const SILENT_AUDIO_URI = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-    const silentAudio = new Audio(SILENT_AUDIO_URI);
-    silentAudio.loop = true;
+    // TTS Audio Player (Using HTML5 Audio to bypass Web Speech API background restrictions)
+    const ttsAudio = new Audio();
 
     // --- DOM Elements ---
     const screens = {
@@ -460,9 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeSentenceIndex === -1) {
             activeSentenceIndex = 0;
         }
-
-        // Start silent audio to maintain JS execution thread in background
-        silentAudio.play().catch(err => console.log("Silent audio autoplay prevented:", err));
         
         // Update Media Session state
         if ('mediaSession' in navigator) {
@@ -470,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateMediaSession();
         
-        speakFromIndex(activeSentenceIndex);
+        playSentenceTts(activeSentenceIndex);
     }
 
     function pausePlayback() {
@@ -483,10 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseSvg.classList.add('hidden');
         playBtnText.textContent = "再開";
 
-        window.speechSynthesis.pause();
-        
-        // Pause silent audio to allow CPU to rest
-        silentAudio.pause();
+        ttsAudio.pause();
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'paused';
@@ -503,10 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseSvg.classList.remove('hidden');
         playBtnText.textContent = "一時停止";
 
-        window.speechSynthesis.resume();
-        
-        // Resume silent audio
-        silentAudio.play().catch(err => console.log("Silent audio play failed on resume:", err));
+        ttsAudio.play().catch(err => console.log("Resume play failed:", err));
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
@@ -531,11 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.remove('active');
         });
 
-        window.speechSynthesis.cancel();
-        
-        // Stop silent audio completely
-        silentAudio.pause();
-        silentAudio.currentTime = 0;
+        ttsAudio.pause();
+        ttsAudio.src = ""; // Clear audio source
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'none';
@@ -630,28 +616,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
-    let sentenceCharRanges = []; // [{ index, start, end }]
-    
-    function prepareSpeechText(startIndex) {
-        sentenceCharRanges = [];
-        let accumulatedLength = 0;
-        let textParts = [];
-        
-        for (let i = startIndex; i < sentences.length; i++) {
-            let ttsText = correctPronunciation(sentences[i].text);
-            // Append punctuation and a small pause (space) for natural cadence
-            let part = ttsText + "。　"; 
-            
-            sentenceCharRanges.push({
-                index: i,
-                start: accumulatedLength,
-                end: accumulatedLength + part.length
-            });
-            textParts.push(part);
-            accumulatedLength += part.length;
-        }
-        
-        return textParts.join("");
+    // --- Google High-Quality TTS Audio Engine ---
+    function getTtsUrl(text) {
+        return `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
     }
 
     function highlightSentence(index) {
@@ -669,44 +636,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function speakFromIndex(index) {
+    function playSentenceTts(index) {
         if (!isPlaying) return;
 
-        window.speechSynthesis.cancel(); // Clear any ongoing speech
-
         activeSentenceIndex = index;
-        const fullTtsText = prepareSpeechText(index);
+        const currentSentence = sentences[index];
 
-        currentUtterance = new SpeechSynthesisUtterance(fullTtsText);
-        currentUtterance.lang = 'ja-JP';
-        currentUtterance.rate = speechRate;
-
-        // Highlight first sentence initially
+        // 1. Highlight visual sentence
         highlightSentence(index);
 
-        // Hook onboundary event to track active reading positions and highlight sentences in real-time
-        currentUtterance.onboundary = (event) => {
-            if (event.name === 'word' || event.name === 'sentence') {
-                const charIndex = event.charIndex;
-                const match = sentenceCharRanges.find(r => charIndex >= r.start && charIndex < r.end);
-                if (match && match.index !== activeSentenceIndex) {
-                    activeSentenceIndex = match.index;
-                    highlightSentence(match.index);
-                }
-            }
-        };
+        // 2. Play Audio via TTS URL
+        const ttsText = correctPronunciation(currentSentence.text);
+        
+        // Google TTS URL
+        ttsAudio.src = getTtsUrl(ttsText);
+        ttsAudio.playbackRate = speechRate; // Apply custom user speech speed rate
 
-        currentUtterance.onend = () => {
-            if (isPlaying && !isPaused) {
+        ttsAudio.play().catch(err => {
+            console.error("HTML5 TTS Play failed:", err);
+            // Handle autoplay blocking if user didn't interact
+            if (err.name === "NotAllowedError") {
+                pausePlayback();
+            }
+        });
+    }
+
+    // Bind core HTML5 Audio Event Listeners
+    ttsAudio.addEventListener('ended', () => {
+        if (isPlaying && !isPaused) {
+            const nextIndex = activeSentenceIndex + 1;
+            if (nextIndex < sentences.length) {
+                // Play next sentence in current article
+                playSentenceTts(nextIndex);
+            } else {
                 // Completed reading entire article
                 if (autoplayEnabled) {
-                    // Advance to next article in database
                     const nextArtIdx = activeArticleIndex + 1;
                     if (nextArtIdx < lawData.articles.length) {
                         loadArticle(nextArtIdx);
-                        // Brief delay for mobile rendering and auditory breathing pause
+                        // Small pause between articles
                         setTimeout(() => {
-                            if (isPlaying) speakFromIndex(0);
+                            if (isPlaying) playSentenceTts(0);
                         }, 800);
                     } else {
                         stopPlayback();
@@ -715,22 +685,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     stopPlayback();
                 }
             }
-        };
+        }
+    });
 
-        currentUtterance.onerror = (e) => {
-            if (e.error !== 'interrupted' && e.error !== 'canceled') {
-                console.error("SpeechSynthesis error:", e);
+    ttsAudio.addEventListener('error', (e) => {
+        console.error("HTML5 TTS Audio element error:", e);
+        // Skip current sentence if it fails to load
+        if (isPlaying && !isPaused) {
+            const nextIndex = activeSentenceIndex + 1;
+            if (nextIndex < sentences.length) {
+                setTimeout(() => playSentenceTts(nextIndex), 500);
+            } else {
                 stopPlayback();
             }
-        };
-
-        window.speechSynthesis.speak(currentUtterance);
-        
-        // Chrome Mobile / iOS bug fix: synthesis gets stuck on pauses, so we resume forcefully if paused
-        if (window.speechSynthesis.paused) {
-            window.speechSynthesis.resume();
         }
-    }
+    });
 
     function jumpToSentence(index) {
         if (!lawData) return;
@@ -749,7 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pauseSvg.classList.remove('hidden');
             playBtnText.textContent = "一時停止";
 
-            speakFromIndex(index);
+            playSentenceTts(index);
         } else {
             highlightSentence(index);
         }
@@ -801,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Dynamic rate change if currently reading
         if (isPlaying && !isPaused && activeSentenceIndex !== -1) {
-            speakFromIndex(activeSentenceIndex);
+            ttsAudio.playbackRate = rate;
         }
     }
 
