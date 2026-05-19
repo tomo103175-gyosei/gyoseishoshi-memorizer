@@ -588,6 +588,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /避ける/g, replacement: 'さける' },
             { pattern: /次章/g, replacement: 'じしょう' },
             { pattern: /同表/g, replacement: 'どうひょう' },
+            { pattern: /請求人/g, replacement: 'せいきゅうにん' },
+            { pattern: /参加人/g, replacement: 'さんかにん' },
             { pattern: /国会/g, replacement: 'こっかい' },
             { pattern: /犯則/g, replacement: 'はんそく' },
             { pattern: /無効等確認/g, replacement: 'むこうとうかくにん' },
