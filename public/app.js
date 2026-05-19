@@ -587,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /の下/g, replacement: 'のもと' },
             { pattern: /避ける/g, replacement: 'さける' },
             { pattern: /次章/g, replacement: 'じしょう' },
+            { pattern: /同表/g, replacement: 'どうひょう' },
             { pattern: /国会/g, replacement: 'こっかい' },
             { pattern: /犯則/g, replacement: 'はんそく' },
             { pattern: /無効等確認/g, replacement: 'むこうとうかくにん' },
