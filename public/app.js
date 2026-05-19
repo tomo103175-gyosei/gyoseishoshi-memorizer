@@ -555,6 +555,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const legalReplacements = [
             // Specific compound words with "項" or "号" must be processed first to avoid partial replacements!
             { pattern: /事項/g, replacement: 'じこう' },
+            { pattern: /前項/g, replacement: 'ぜんこう' },
+            { pattern: /次項/g, replacement: 'じこう' },
 
             // Fix absolute #1 issue: "項" (unaji) and "号" (sakebi) misreadings
             { pattern: /([一二三四五六七八九十百千万０-９0-9]+)項/g, replacement: '$1こう' },
@@ -582,8 +584,6 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /行なわれる/g, replacement: 'おこなわれる' },
             { pattern: /行われた/g, replacement: 'おこなわれた' },
             { pattern: /行なわれた/g, replacement: 'おこなわれた' },
-            { pattern: /前項/g, replacement: 'ぜんこう' },
-            { pattern: /次項/g, replacement: 'じこう' },
             { pattern: /の下/g, replacement: 'のもと' },
             { pattern: /避ける/g, replacement: 'さける' },
             { pattern: /次章/g, replacement: 'じしょう' },
