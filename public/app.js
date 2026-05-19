@@ -626,6 +626,71 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
+    // --- Audio Preloader Cache ---
+    const audioCache = new Map();
+
+    async function fetchAudioAsBlobUrl(text) {
+        const url = getTtsUrl(text);
+        try {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const blob = await res.blob();
+            return URL.createObjectURL(blob);
+        } catch (e) {
+            console.error("Preload fetch failed", e);
+            return null;
+        }
+    }
+
+    async function preloadNextAudio(artIdx, sentIdx) {
+        // Preload next 2 audio items to ensure gapless playback
+        const itemsToPreload = [];
+        let a = artIdx;
+        let s = sentIdx + 1;
+        
+        for (let i = 0; i < 2; i++) {
+            let text = null;
+            if (a === activeArticleIndex) {
+                if (s < sentences.length) {
+                    text = sentences[s].text;
+                } else {
+                    a++;
+                    s = 0;
+                    if (a < lawData.articles.length && autoplayEnabled) {
+                        const art = lawData.articles[a];
+                        text = `${art.title}${art.caption ? \`（\${art.caption}）\` : ''}`;
+                    }
+                }
+            } else {
+                if (s === 0 && a < lawData.articles.length && autoplayEnabled) {
+                    const art = lawData.articles[a];
+                    text = `${art.title}${art.caption ? \`（\${art.caption}）\` : ''}`;
+                    s++;
+                } else {
+                    break;
+                }
+            }
+            
+            if (text) {
+                itemsToPreload.push({ a, s, text });
+            }
+        }
+
+        for (let item of itemsToPreload) {
+            const cacheKey = `${item.a}-${item.s}`;
+            if (!audioCache.has(cacheKey)) {
+                audioCache.set(cacheKey, 'loading');
+                const ttsText = correctPronunciation(item.text);
+                const blobUrl = await fetchAudioAsBlobUrl(ttsText);
+                if (blobUrl) {
+                    audioCache.set(cacheKey, blobUrl);
+                } else {
+                    audioCache.delete(cacheKey); // retry later
+                }
+            }
+        }
+    }
+
     // --- Google High-Quality TTS Audio Engine (Server-side Proxied) ---
     function getTtsUrl(text) {
         return `/api/tts?text=${encodeURIComponent(text)}`;
@@ -655,11 +720,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Highlight visual sentence
         highlightSentence(index);
 
-        // 2. Play Audio via TTS URL
+        // 2. Play Audio via TTS URL or Cache
+        const cacheKey = `${activeArticleIndex}-${index}`;
         const ttsText = correctPronunciation(currentSentence.text);
+
+        if (audioCache.has(cacheKey) && audioCache.get(cacheKey) !== 'loading') {
+            ttsAudio.src = audioCache.get(cacheKey);
+        } else {
+            ttsAudio.src = getTtsUrl(ttsText);
+        }
         
-        // Google TTS URL
-        ttsAudio.src = getTtsUrl(ttsText);
         ttsAudio.playbackRate = speechRate; // Apply custom user speech speed rate
 
         ttsAudio.play().catch(err => {
@@ -669,6 +739,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 pausePlayback();
             }
         });
+
+        // 3. Preload next sentences to prevent background suspension
+        preloadNextAudio(activeArticleIndex, index);
+
+        // 4. Clean up old caches to prevent memory leaks
+        for (let [key, url] of audioCache.entries()) {
+            const [keyA, keyS] = key.split('-').map(Number);
+            const isCurrentPast = (keyA === activeArticleIndex && keyS < index);
+            const isOldArticle = (keyA !== activeArticleIndex && keyA !== activeArticleIndex + 1);
+            
+            if (isCurrentPast || isOldArticle) {
+                if (url && url !== 'loading') {
+                    URL.revokeObjectURL(url);
+                }
+                audioCache.delete(key);
+            }
+        }
     }
 
     // Bind core HTML5 Audio Event Listeners
@@ -676,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isPlaying && !isPaused) {
             const nextIndex = activeSentenceIndex + 1;
             if (nextIndex < sentences.length) {
-                // Play next sentence in current article
+                // Play next sentence in current article synchronously
                 playSentenceTts(nextIndex);
             } else {
                 // Completed reading entire article
@@ -684,10 +771,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const nextArtIdx = activeArticleIndex + 1;
                     if (nextArtIdx < lawData.articles.length) {
                         loadArticle(nextArtIdx);
-                        // Small pause between articles
-                        setTimeout(() => {
-                            if (isPlaying) playSentenceTts(0);
-                        }, 800);
+                        // Start playing next article immediately, NO setTimeout for background safe
+                        if (isPlaying) playSentenceTts(0);
                     } else {
                         stopPlayback();
                     }
@@ -704,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isPlaying && !isPaused) {
             const nextIndex = activeSentenceIndex + 1;
             if (nextIndex < sentences.length) {
-                setTimeout(() => playSentenceTts(nextIndex), 500);
+                playSentenceTts(nextIndex); // NO setTimeout for background safe
             } else {
                 stopPlayback();
             }
