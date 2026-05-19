@@ -224,6 +224,39 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Render Accordion structure
         lawStructureContainer.innerHTML = "";
         
+        // --- RESUME BUTTON ---
+        try {
+            const states = JSON.parse(localStorage.getItem('gyosei_resume_state') || '{}');
+            const resumeState = states[currentLawName];
+            if (resumeState && resumeState.artIdx < articles.length) {
+                const artInfo = articles[resumeState.artIdx];
+                const resumeBtnContainer = document.createElement('div');
+                resumeBtnContainer.className = 'chapter-accordion expanded';
+                resumeBtnContainer.style.marginBottom = '20px';
+                resumeBtnContainer.style.border = '2px solid var(--color-primary)';
+                
+                resumeBtnContainer.innerHTML = `
+                    <button class="accordion-header" style="background: rgba(255,107,107,0.1); justify-content: center;">
+                        <div class="chapter-title-text" style="color: var(--color-primary); font-weight: bold;">
+                            ▶ 前回（${artInfo.title}）の続きから再生
+                        </div>
+                    </button>
+                `;
+                
+                resumeBtnContainer.querySelector('button').addEventListener('click', () => {
+                    selectArticle(resumeState.artIdx);
+                    // Wait for DOM
+                    setTimeout(() => {
+                        jumpToSentence(resumeState.sentIdx);
+                    }, 50);
+                });
+                
+                lawStructureContainer.appendChild(resumeBtnContainer);
+            }
+        } catch (e) {
+            console.error('Failed to load resume state', e);
+        }
+
         chapters.forEach((chap, chapIdx) => {
             const accordion = document.createElement('div');
             accordion.className = `chapter-accordion ${chapIdx === 0 ? 'expanded' : ''}`;
@@ -694,10 +727,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function saveResumeState() {
+        if (!currentLawName || activeArticleIndex === -1 || activeSentenceIndex === -1) return;
+        try {
+            const states = JSON.parse(localStorage.getItem('gyosei_resume_state') || '{}');
+            states[currentLawName] = {
+                artIdx: activeArticleIndex,
+                sentIdx: activeSentenceIndex
+            };
+            localStorage.setItem('gyosei_resume_state', JSON.stringify(states));
+        } catch (e) {
+            console.error('Failed to save resume state', e);
+        }
+    }
+
     function playSentenceTts(index) {
         if (!isPlaying) return;
 
         activeSentenceIndex = index;
+        saveResumeState();
+        
         const currentSentence = sentences[index];
         highlightSentence(index);
 
@@ -809,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const autoPlayRestore = isPlaying || isPaused;
         
         activeSentenceIndex = index;
+        saveResumeState();
         
         if (autoPlayRestore) {
             isPlaying = true;
