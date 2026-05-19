@@ -24,8 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Speech Engine Instance
     let currentUtterance = null;
 
-    // TTS Audio Player (Using HTML5 Audio to bypass Web Speech API background restrictions)
-    const ttsAudio = new Audio();
+    // TTS Audio Players (Two-player ping-pong to bypass Web Speech API & background restrictions natively)
+    const audioPlayers = [new Audio(), new Audio()];
+    let currentPlayerIndex = 0;
+
+    function getCurrentPlayer() { return audioPlayers[currentPlayerIndex]; }
+    function getNextPlayer() { return audioPlayers[1 - currentPlayerIndex]; }
 
     // --- DOM Elements ---
     const screens = {
@@ -478,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseSvg.classList.add('hidden');
         playBtnText.textContent = "再開";
 
-        ttsAudio.pause();
+        getCurrentPlayer().pause();
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'paused';
@@ -495,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseSvg.classList.remove('hidden');
         playBtnText.textContent = "一時停止";
 
-        ttsAudio.play().catch(err => console.log("Resume play failed:", err));
+        getCurrentPlayer().play().catch(err => console.log("Resume play failed:", err));
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
@@ -520,8 +524,10 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.remove('active');
         });
 
-        ttsAudio.pause();
-        ttsAudio.src = ""; // Clear audio source
+        audioPlayers[0].pause();
+        audioPlayers[1].pause();
+        audioPlayers[0].src = "";
+        audioPlayers[1].src = "";
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'none';
@@ -626,67 +632,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
-    // --- Audio Preloader Cache ---
-    const audioCache = new Map();
-
-    async function fetchAudioAsBlobUrl(text) {
-        const url = getTtsUrl(text);
-        try {
-            const res = await fetch(url);
-            if (!res.ok) return null;
-            const blob = await res.blob();
-            return URL.createObjectURL(blob);
-        } catch (e) {
-            console.error("Preload fetch failed", e);
-            return null;
-        }
-    }
-
-    async function preloadNextAudio(artIdx, sentIdx) {
-        // Preload next 2 audio items to ensure gapless playback
-        const itemsToPreload = [];
+    // --- Native Ping-Pong Preloader ---
+    function preloadNativeAudio(artIdx, sentIdx) {
         let a = artIdx;
         let s = sentIdx + 1;
-        
-        for (let i = 0; i < 2; i++) {
-            let text = null;
-            if (a === activeArticleIndex) {
-                if (s < sentences.length) {
-                    text = sentences[s].text;
-                } else {
-                    a++;
-                    s = 0;
-                    if (a < lawData.articles.length && autoplayEnabled) {
-                        const art = lawData.articles[a];
-                        text = `${art.title}${art.caption ? `（${art.caption}）` : ''}`;
-                    }
-                }
-            } else {
-                if (s === 0 && a < lawData.articles.length && autoplayEnabled) {
-                    const art = lawData.articles[a];
-                    text = `${art.title}${art.caption ? `（${art.caption}）` : ''}`;
-                    s++;
-                } else {
-                    break;
-                }
-            }
-            
-            if (text) {
-                itemsToPreload.push({ a, s, text });
+        let nextText = null;
+
+        if (s < sentences.length) {
+            nextText = sentences[s].text;
+        } else {
+            a++;
+            if (a < lawData.articles.length && autoplayEnabled) {
+                const art = lawData.articles[a];
+                nextText = `${art.title}${art.caption ? `（${art.caption}）` : ''}`;
             }
         }
 
-        for (let item of itemsToPreload) {
-            const cacheKey = `${item.a}-${item.s}`;
-            if (!audioCache.has(cacheKey)) {
-                audioCache.set(cacheKey, 'loading');
-                const ttsText = correctPronunciation(item.text);
-                const blobUrl = await fetchAudioAsBlobUrl(ttsText);
-                if (blobUrl) {
-                    audioCache.set(cacheKey, blobUrl);
-                } else {
-                    audioCache.delete(cacheKey); // retry later
-                }
+        if (nextText) {
+            const nextUrl = getTtsUrl(correctPronunciation(nextText));
+            const nextPlayer = getNextPlayer();
+            
+            // Checking endsWith ensures we don't reload if it's already loading this URL
+            if (!nextPlayer.src.endsWith(nextUrl)) {
+                nextPlayer.src = nextUrl;
+                nextPlayer.preload = "auto";
+                nextPlayer.load(); // Triggers browser's native background fetching!
             }
         }
     }
@@ -716,62 +686,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         activeSentenceIndex = index;
         const currentSentence = sentences[index];
-
-        // 1. Highlight visual sentence
         highlightSentence(index);
 
-        // 2. Play Audio via TTS URL or Cache
-        const cacheKey = `${activeArticleIndex}-${index}`;
+        const player = getCurrentPlayer();
         const ttsText = correctPronunciation(currentSentence.text);
+        const url = getTtsUrl(ttsText);
 
-        if (audioCache.has(cacheKey) && audioCache.get(cacheKey) !== 'loading') {
-            ttsAudio.src = audioCache.get(cacheKey);
-        } else {
-            ttsAudio.src = getTtsUrl(ttsText);
+        if (!player.src.endsWith(url)) {
+            player.src = url;
+            player.load();
         }
         
-        ttsAudio.playbackRate = speechRate; // Apply custom user speech speed rate
-
-        ttsAudio.play().catch(err => {
+        player.playbackRate = speechRate;
+        player.play().catch(err => {
             console.error("HTML5 TTS Play failed:", err);
-            // Handle autoplay blocking if user didn't interact
             if (err.name === "NotAllowedError") {
                 pausePlayback();
             }
         });
 
-        // 3. Preload next sentences to prevent background suspension
-        preloadNextAudio(activeArticleIndex, index);
-
-        // 4. Clean up old caches to prevent memory leaks
-        for (let [key, url] of audioCache.entries()) {
-            const [keyA, keyS] = key.split('-').map(Number);
-            const isCurrentPast = (keyA === activeArticleIndex && keyS < index);
-            const isOldArticle = (keyA !== activeArticleIndex && keyA !== activeArticleIndex + 1);
-            
-            if (isCurrentPast || isOldArticle) {
-                if (url && url !== 'loading') {
-                    URL.revokeObjectURL(url);
-                }
-                audioCache.delete(key);
-            }
-        }
+        // Preload next audio natively!
+        preloadNativeAudio(activeArticleIndex, index);
     }
 
-    // Bind core HTML5 Audio Event Listeners
-    ttsAudio.addEventListener('ended', () => {
+    // Bind core HTML5 Audio Event Listeners to BOTH players
+    function onPlayerEnded() {
         if (isPlaying && !isPaused) {
             const nextIndex = activeSentenceIndex + 1;
             if (nextIndex < sentences.length) {
-                // Play next sentence in current article synchronously
+                currentPlayerIndex = 1 - currentPlayerIndex; // Switch ping-pong player
                 playSentenceTts(nextIndex);
             } else {
-                // Completed reading entire article
                 if (autoplayEnabled) {
                     const nextArtIdx = activeArticleIndex + 1;
                     if (nextArtIdx < lawData.articles.length) {
                         loadArticle(nextArtIdx);
-                        // Start playing next article immediately, NO setTimeout for background safe
+                        currentPlayerIndex = 1 - currentPlayerIndex;
                         if (isPlaying) playSentenceTts(0);
                     } else {
                         stopPlayback();
@@ -781,20 +731,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-    });
+    }
 
-    ttsAudio.addEventListener('error', (e) => {
+    function onPlayerError(e) {
         console.error("HTML5 TTS Audio element error:", e);
-        // Skip current sentence if it fails to load
         if (isPlaying && !isPaused) {
             const nextIndex = activeSentenceIndex + 1;
             if (nextIndex < sentences.length) {
-                playSentenceTts(nextIndex); // NO setTimeout for background safe
+                currentPlayerIndex = 1 - currentPlayerIndex;
+                playSentenceTts(nextIndex);
             } else {
                 stopPlayback();
             }
         }
-    });
+    }
+
+    audioPlayers[0].addEventListener('ended', onPlayerEnded);
+    audioPlayers[1].addEventListener('ended', onPlayerEnded);
+    audioPlayers[0].addEventListener('error', onPlayerError);
+    audioPlayers[1].addEventListener('error', onPlayerError);
 
     function jumpToSentence(index) {
         if (!lawData) return;
@@ -865,7 +820,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Dynamic rate change if currently reading
         if (isPlaying && !isPaused && activeSentenceIndex !== -1) {
-            ttsAudio.playbackRate = rate;
+            audioPlayers[0].playbackRate = rate;
+            audioPlayers[1].playbackRate = rate;
         }
     }
 
