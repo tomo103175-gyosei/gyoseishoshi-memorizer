@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // TTS Audio Players (Two-player ping-pong to bypass Web Speech API & background restrictions natively)
     const audioPlayers = [new Audio(), new Audio()];
     let currentPlayerIndex = 0;
+    let hasTransitioned = false;
 
     function getCurrentPlayer() { return audioPlayers[currentPlayerIndex]; }
     function getNextPlayer() { return audioPlayers[1 - currentPlayerIndex]; }
@@ -526,8 +527,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         audioPlayers[0].pause();
         audioPlayers[1].pause();
-        audioPlayers[0].src = "";
-        audioPlayers[1].src = "";
+        audioPlayers[0].removeAttribute('src');
+        audioPlayers[1].removeAttribute('src');
+        audioPlayers[0].load();
+        audioPlayers[1].load();
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'none';
@@ -657,6 +660,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 nextPlayer.src = nextUrl;
                 nextPlayer.preload = "auto";
                 nextPlayer.load(); // Triggers browser's native background fetching!
+            } else if (nextPlayer.ended) {
+                // If text is identical to a previous track but finished, reload it
+                nextPlayer.load();
             }
         }
     }
@@ -695,6 +701,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!player.src.endsWith(url)) {
             player.src = url;
             player.load();
+        } else if (player.ended || player.currentTime > 0) {
+            player.currentTime = 0; // Reset just in case
         }
         
         player.playbackRate = speechRate;
@@ -705,47 +713,85 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Preload next audio natively!
-        preloadNativeAudio(activeArticleIndex, index);
+        hasTransitioned = false;
+
+        // Only preload if the old player has finished playing (e.g. initial start or jump).
+        // If it's still playing its overlap tail, its 'ended' event will trigger the preload.
+        if (getNextPlayer().paused || getNextPlayer().ended) {
+            preloadNativeAudio(activeArticleIndex, index);
+        }
+    }
+
+    function playNextTrack() {
+        let nextIndex = activeSentenceIndex + 1;
+        let nextArtIdx = activeArticleIndex;
+
+        if (nextIndex >= sentences.length) {
+            if (!autoplayEnabled) {
+                stopPlayback();
+                return;
+            }
+            nextArtIdx++;
+            if (nextArtIdx >= lawData.articles.length) {
+                stopPlayback();
+                return;
+            }
+            loadArticle(nextArtIdx);
+            nextIndex = 0;
+        }
+
+        currentPlayerIndex = 1 - currentPlayerIndex;
+        if (isPlaying) {
+            playSentenceTts(nextIndex);
+        }
     }
 
     // Bind core HTML5 Audio Event Listeners to BOTH players
-    function onPlayerEnded() {
-        if (isPlaying && !isPaused) {
-            const nextIndex = activeSentenceIndex + 1;
-            if (nextIndex < sentences.length) {
-                currentPlayerIndex = 1 - currentPlayerIndex; // Switch ping-pong player
-                playSentenceTts(nextIndex);
-            } else {
-                if (autoplayEnabled) {
-                    const nextArtIdx = activeArticleIndex + 1;
-                    if (nextArtIdx < lawData.articles.length) {
-                        loadArticle(nextArtIdx);
-                        currentPlayerIndex = 1 - currentPlayerIndex;
-                        if (isPlaying) playSentenceTts(0);
-                    } else {
-                        stopPlayback();
-                    }
-                } else {
-                    stopPlayback();
-                }
+    function onTimeUpdate(e) {
+        if (!isPlaying || isPaused || hasTransitioned) return;
+        const player = e.target;
+        if (player !== getCurrentPlayer()) return;
+
+        // Overlap: trigger next track 0.3s before current one ends
+        // This ensures the background OS lock never releases between sentences!
+        if (player.duration && player.currentTime) {
+            const timeLeft = player.duration - player.currentTime;
+            if (timeLeft <= 0.3) {
+                hasTransitioned = true;
+                playNextTrack();
+            }
+        }
+    }
+
+    function onPlayerEnded(e) {
+        const player = e.target;
+        
+        if (player === getCurrentPlayer()) {
+            // Fallback: If timeupdate failed to fire early enough
+            if (!hasTransitioned && isPlaying && !isPaused) {
+                hasTransitioned = true;
+                playNextTrack();
+            }
+        } else {
+            // The INACTIVE player just finished playing its tail-end overlap.
+            // It is now fully free, so we can preload the NEXT track for it.
+            if (isPlaying && !isPaused) {
+                preloadNativeAudio(activeArticleIndex, activeSentenceIndex);
             }
         }
     }
 
     function onPlayerError(e) {
         console.error("HTML5 TTS Audio element error:", e);
-        if (isPlaying && !isPaused) {
-            const nextIndex = activeSentenceIndex + 1;
-            if (nextIndex < sentences.length) {
-                currentPlayerIndex = 1 - currentPlayerIndex;
-                playSentenceTts(nextIndex);
-            } else {
-                stopPlayback();
-            }
+        const player = e.target;
+        if (player === getCurrentPlayer() && isPlaying && !isPaused) {
+            hasTransitioned = true;
+            playNextTrack();
         }
     }
 
+    audioPlayers[0].addEventListener('timeupdate', onTimeUpdate);
+    audioPlayers[1].addEventListener('timeupdate', onTimeUpdate);
     audioPlayers[0].addEventListener('ended', onPlayerEnded);
     audioPlayers[1].addEventListener('ended', onPlayerEnded);
     audioPlayers[0].addEventListener('error', onPlayerError);
