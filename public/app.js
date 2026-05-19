@@ -658,13 +658,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     s = 0;
                     if (a < lawData.articles.length && autoplayEnabled) {
                         const art = lawData.articles[a];
-                        text = `${art.title}${art.caption ? \`（\${art.caption}）\` : ''}`;
+                        text = `${art.title}${art.caption ? `（${art.caption}）` : ''}`;
                     }
                 }
             } else {
                 if (s === 0 && a < lawData.articles.length && autoplayEnabled) {
                     const art = lawData.articles[a];
-                    text = `${art.title}${art.caption ? \`（\${art.caption}）\` : ''}`;
+                    text = `${art.title}${art.caption ? `（${art.caption}）` : ''}`;
                     s++;
                 } else {
                     break;
