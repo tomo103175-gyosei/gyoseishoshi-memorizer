@@ -692,7 +692,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (nextText) {
-            const nextUrl = getTtsUrl(correctPronunciation(nextText));
+            const cleanText = correctPronunciation(nextText).trim();
+            if (!cleanText) return;
+            
+            const nextUrl = getTtsUrl(cleanText);
             const nextPlayer = getNextPlayer();
             
             // Checking endsWith ensures we don't reload if it's already loading this URL
@@ -751,7 +754,14 @@ document.addEventListener('DOMContentLoaded', () => {
         highlightSentence(index);
 
         const player = getCurrentPlayer();
-        const ttsText = correctPronunciation(currentSentence.text);
+        const ttsText = correctPronunciation(currentSentence.text).trim();
+        
+        if (!ttsText) {
+            hasTransitioned = true;
+            setTimeout(() => { playNextTrack(); }, 50);
+            return;
+        }
+
         const url = getTtsUrl(ttsText);
 
         if (!player.src.endsWith(url)) {
@@ -766,6 +776,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("HTML5 TTS Play failed:", err);
             if (err.name === "NotAllowedError") {
                 pausePlayback();
+            } else {
+                if (isPlaying && !isPaused && !hasTransitioned) {
+                    hasTransitioned = true;
+                    setTimeout(() => { playNextTrack(); }, 100);
+                }
             }
         });
 
