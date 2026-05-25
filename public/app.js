@@ -29,6 +29,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPlayerIndex = 0;
     let hasTransitioned = false;
 
+    // Keep-alive audio to prevent background JS suspension on mobile
+    const keepAliveAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+    keepAliveAudio.loop = true;
+
+    // Watchdog to detect infinite buffering stalls
+    let watchdogTimer = null;
+
+    function resetWatchdog() {
+        if (watchdogTimer) clearTimeout(watchdogTimer);
+        watchdogTimer = setTimeout(() => {
+            if (isPlaying && !isPaused && !hasTransitioned) {
+                console.warn("Watchdog timeout! Audio seems stuck, skipping to next.");
+                hasTransitioned = true;
+                playNextTrack();
+            }
+        }, 15000);
+    }
+
+    function clearWatchdog() {
+        if (watchdogTimer) clearTimeout(watchdogTimer);
+        watchdogTimer = null;
+    }
+
     function getCurrentPlayer() { return audioPlayers[currentPlayerIndex]; }
     function getNextPlayer() { return audioPlayers[1 - currentPlayerIndex]; }
 
@@ -485,6 +508,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isPlaying = true;
         isPaused = false;
         
+        keepAliveAudio.play().catch(e => console.log("Keep-alive play failed:", e));
+
         statusPill.className = "active-status playing";
         statusText.textContent = "読み上げ中";
         
@@ -508,6 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function pausePlayback() {
         isPaused = true;
+        clearWatchdog();
         statusPill.className = "active-status paused";
         statusText.textContent = "一時停止中";
         
@@ -516,6 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseSvg.classList.add('hidden');
         playBtnText.textContent = "再開";
 
+        keepAliveAudio.pause();
         getCurrentPlayer().pause();
 
         if ('mediaSession' in navigator) {
@@ -525,6 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resumePlayback() {
         isPaused = false;
+        resetWatchdog();
         statusPill.className = "active-status playing";
         statusText.textContent = "読み上げ中";
         
@@ -533,6 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseSvg.classList.remove('hidden');
         playBtnText.textContent = "一時停止";
 
+        keepAliveAudio.play().catch(e => console.log("Keep-alive play failed:", e));
         getCurrentPlayer().play().catch(err => console.log("Resume play failed:", err));
 
         if ('mediaSession' in navigator) {
@@ -544,6 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isPlaying = false;
         isPaused = false;
         activeSentenceIndex = -1;
+        clearWatchdog();
 
         statusPill.className = "active-status";
         statusText.textContent = "待機中";
@@ -558,6 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
             el.classList.remove('active');
         });
 
+        keepAliveAudio.pause();
         audioPlayers[0].pause();
         audioPlayers[1].pause();
         audioPlayers[0].removeAttribute('src');
@@ -628,6 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /国会/g, replacement: 'こっかい' },
             { pattern: /犯則/g, replacement: 'はんそく' },
             { pattern: /無効等確認/g, replacement: 'むこうとうかくにん' },
+            { pattern: /補助人/g, replacement: 'ほじょにん' },
 
             
             // Suffix '所' (jo) legal specific readings
@@ -774,6 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         player.playbackRate = speechRate;
+        resetWatchdog();
         player.play().catch(err => {
             console.error("HTML5 TTS Play failed:", err);
             if (err.name === "NotAllowedError") {
@@ -824,6 +857,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isPlaying || isPaused || hasTransitioned) return;
         const player = e.target;
         if (player !== getCurrentPlayer()) return;
+
+        resetWatchdog();
 
         // Overlap: trigger next track 0.3s before current one ends
         // This ensures the background OS lock never releases between sentences!
@@ -881,6 +916,8 @@ document.addEventListener('DOMContentLoaded', () => {
             isPlaying = true;
             isPaused = false;
             
+            keepAliveAudio.play().catch(e => console.log("Keep-alive failed:", e));
+
             statusPill.className = "active-status playing";
             statusText.textContent = "読み上げ中";
             btnPlay.classList.add('playing');
