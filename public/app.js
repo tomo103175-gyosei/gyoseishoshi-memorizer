@@ -807,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
             player.currentTime = 0; // Reset just in case
         }
         
-        player.playbackRate = speechRate;
+        player.playbackRate = speechRate * 1.5;
         resetWatchdog();
         player.play().catch(err => {
             console.error("HTML5 TTS Play failed:", err);
@@ -979,8 +979,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Dynamic rate change if currently reading
         if (isPlaying && !isPaused && activeSentenceIndex !== -1) {
-            audioPlayers[0].playbackRate = rate;
-            audioPlayers[1].playbackRate = rate;
+            audioPlayers[0].playbackRate = rate * 1.5;
+            audioPlayers[1].playbackRate = rate * 1.5;
         }
     }
 
