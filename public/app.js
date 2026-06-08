@@ -696,9 +696,12 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /過失/g, replacement: 'かしつ' },
             { pattern: /第三者/g, replacement: 'だいさんしゃ' },
             { pattern: /物権/g, replacement: 'ぶっけん' },
-            { pattern: /債権/g, replacement: 'さいけん' },
             { pattern: /債権者/g, replacement: 'さいけんしゃ' },
+            { pattern: /債権/g, replacement: 'さいけん' },
+            { pattern: /先取特権者/g, replacement: 'さきどりとっけんしゃ' },
+            { pattern: /先取特権/g, replacement: 'さきどりとっけん' },
             { pattern: /留置物/g, replacement: 'りゅうちぶつ' },
+            { pattern: /質物/g, replacement: 'しちぶつ' },
             { pattern: /有体物/g, replacement: 'ゆうたいぶつ' },
             { pattern: /無主物/g, replacement: 'むしゅぶつ' },
             { pattern: /表見代理/g, replacement: 'ひょうけんだいり' }
