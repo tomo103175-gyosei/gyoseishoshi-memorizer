@@ -621,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /事項/g, replacement: 'じこう' },
             { pattern: /前項/g, replacement: 'ぜんこう' },
             { pattern: /次項/g, replacement: 'じこう' },
+            { pattern: /号中/g, replacement: 'ごうちゅう' },
 
             // Fix absolute #1 issue: "項" (unaji) and "号" (sakebi) misreadings
             { pattern: /([一二三四五六七八九十百千万０-９0-9]+)項/g, replacement: '$1こう' },
@@ -654,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /同表/g, replacement: 'どうひょう' },
             { pattern: /請求人/g, replacement: 'せいきゅうにん' },
             { pattern: /参加人/g, replacement: 'さんかにん' },
+            { pattern: /名宛人/g, replacement: 'なあてにん' },
             { pattern: /公の/g, replacement: 'おおやけの' },
             { pattern: /公に/g, replacement: 'おおやけに' },
             { pattern: /国会/g, replacement: 'こっかい' },
