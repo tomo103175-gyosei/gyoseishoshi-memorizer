@@ -26,6 +26,7 @@ function fetchUrl(url) {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
         }, (res) => {
+            res.setEncoding('utf8');
             let data = '';
             res.on('data', (chunk) => data += chunk);
             res.on('end', () => {

@@ -437,11 +437,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Standard sentence split by Japanese period
             const pSentences = paraTextFull.split(/(?<=。)/g).filter(s => s.trim().length > 0);
             
-            pSentences.forEach((sText) => {
+            pSentences.forEach((sText, sIdx) => {
                 const isIndent = sText.startsWith('  ') || sText.startsWith('　　');
+                const prefix = (sIdx === 0) ? pNum : '';
                 sentences.push({
                     index: sentenceCount,
-                    text: pNum + sText.trim(),
+                    text: prefix + sText.trim(),
                     isIndent: isIndent
                 });
                 
@@ -452,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isIndent) span.classList.add('indent-item');
                 else span.classList.add('sentence-break');
                 
-                span.textContent = pNum + sText;
+                span.textContent = prefix + sText;
                 
                 // Let user tap any sentence to jump speech instantly!
                 const activeIndex = sentenceCount;
