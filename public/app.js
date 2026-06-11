@@ -655,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /次章/g, replacement: 'じしょう' },
             { pattern: /同表/g, replacement: 'どうひょう' },
             { pattern: /請求人/g, replacement: 'せいきゅうにん' },
+            { pattern: /審査関係人/g, replacement: 'しんさかんけいにん' },
             { pattern: /参加人/g, replacement: 'さんかにん' },
             { pattern: /名宛人/g, replacement: 'なあてにん' },
             { pattern: /公の/g, replacement: 'おおやけの' },
