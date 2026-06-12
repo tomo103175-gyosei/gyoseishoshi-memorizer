@@ -624,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /前項/g, replacement: 'ぜんこう' },
             { pattern: /次項/g, replacement: 'じこう' },
             { pattern: /号中/g, replacement: 'ごうちゅう' },
+            { pattern: /第([一二三四五六七八九十百千万０-９0-9]+)号/g, replacement: '、だい$1ごう、' },
 
             // Fix absolute #1 issue: "項" (unaji) and "号" (sakebi) misreadings
             { pattern: /([一二三四五六七八九十百千万０-９0-9]+)項/g, replacement: '$1こう' },
