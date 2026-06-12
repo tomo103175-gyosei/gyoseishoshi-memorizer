@@ -620,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const legalReplacements = [
             // Specific compound words with "項" or "号" must be processed first to avoid partial replacements!
             { pattern: /事項/g, replacement: 'じこう' },
+            { pattern: /前([一二三四五六七八九十百千万０-９0-9]+)項/g, replacement: 'ぜん$1こう' },
             { pattern: /前項/g, replacement: 'ぜんこう' },
             { pattern: /次項/g, replacement: 'じこう' },
             { pattern: /号中/g, replacement: 'ごうちゅう' },
@@ -656,8 +657,11 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /同表/g, replacement: 'どうひょう' },
             { pattern: /請求人/g, replacement: 'せいきゅうにん' },
             { pattern: /審査関係人/g, replacement: 'しんさかんけいにん' },
+            { pattern: /利害関係人/g, replacement: 'りがいかんけいにん' },
             { pattern: /参加人/g, replacement: 'さんかにん' },
             { pattern: /名宛人/g, replacement: 'なあてにん' },
+            { pattern: /何人/g, replacement: 'なんぴと' },
+            { pattern: /約し/g, replacement: 'やくし' },
             { pattern: /公の/g, replacement: 'おおやけの' },
             { pattern: /公に/g, replacement: 'おおやけに' },
             { pattern: /国会/g, replacement: 'こっかい' },
