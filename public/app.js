@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let isPaused = false;
     let autoplayEnabled = true;
     let focusModeEnabled = false;
+    let wakeLockEnabled = true;
+    let wakeLock = null;
     let speechRate = 1.0;
     
     // UI Layout Configuration
@@ -91,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const switchAutoplay = document.getElementById('switch-autoplay');
     const switchFocus = document.getElementById('switch-focus');
+    const switchWakelock = document.getElementById('switch-wakelock');
 
     // Swipe buttons
     const btnPrevArticle = document.getElementById('btn-prev-article');
@@ -530,6 +533,30 @@ document.addEventListener('DOMContentLoaded', () => {
         updateMediaSession();
         
         playSentenceTts(activeSentenceIndex);
+        requestWakeLock();
+    }
+
+    async function requestWakeLock() {
+        if (!wakeLockEnabled || !isPlaying || isPaused) return;
+        if ('wakeLock' in navigator) {
+            try {
+                if (!wakeLock) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        wakeLock = null;
+                    });
+                }
+            } catch (err) {
+                console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+            }
+        }
+    }
+
+    function releaseWakeLock() {
+        if (wakeLock !== null) {
+            wakeLock.release().catch(console.error);
+            wakeLock = null;
+        }
     }
 
     function pausePlayback() {
@@ -549,6 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'paused';
         }
+        releaseWakeLock();
     }
 
     function resumePlayback() {
@@ -568,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
         }
+        requestWakeLock();
     }
 
     function stopPlayback() {
@@ -600,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'none';
         }
+        releaseWakeLock();
     }
 
     // Helper: Correct Japanese legal terminology pronunciation for browser TTS
@@ -1002,6 +1032,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Config Toggles Hooking ---
     switchAutoplay.addEventListener('change', () => {
         autoplayEnabled = switchAutoplay.checked;
+    });
+
+    // Wake Lock Toggle
+    switchWakelock.addEventListener('change', () => {
+        wakeLockEnabled = switchWakelock.checked;
+        if (wakeLockEnabled) {
+            requestWakeLock();
+        } else {
+            releaseWakeLock();
+        }
+    });
+
+    // Re-request wake lock on visibility change
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            requestWakeLock();
+        }
     });
 
     // Deep Focus Mode Toggle
