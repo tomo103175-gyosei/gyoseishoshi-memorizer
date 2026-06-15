@@ -708,6 +708,12 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /犯則/g, replacement: 'はんそく' },
             { pattern: /無効等確認/g, replacement: 'むこうとうかくにん' },
             { pattern: /補助人/g, replacement: 'ほじょにん' },
+            { pattern: /負ふ/g, replacement: 'おう' },
+            { pattern: /行ふ/g, replacement: 'おこなう' },
+            { pattern: /賜与/g, replacement: 'しよ' },
+            { pattern: /永久/g, replacement: 'えいきゅう' },
+            { pattern: /伴はない/g, replacement: 'ともなわない' },
+            { pattern: /その他/g, replacement: 'そのた' },
 
             
             // Suffix '所' (jo) legal specific readings
