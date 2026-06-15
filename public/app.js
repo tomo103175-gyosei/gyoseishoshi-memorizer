@@ -695,6 +695,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /名宛人/g, replacement: 'なあてにん' },
             { pattern: /何人/g, replacement: 'なんぴと' },
             { pattern: /約し/g, replacement: 'やくし' },
+            { pattern: /遺言者/g, replacement: 'いごんしゃ' },
+            { pattern: /遺言/g, replacement: 'いごん' },
             { pattern: /占有者/g, replacement: 'せんゆうしゃ' },
             { pattern: /占有物/g, replacement: 'せんゆうぶつ' },
             { pattern: /の他/g, replacement: 'のほか' },
