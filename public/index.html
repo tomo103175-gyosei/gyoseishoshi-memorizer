@@ -148,6 +148,12 @@
                         <input type="text" id="input-article-search" placeholder="条文番号または見出しで検索 (例: 94, 享有)">
                         <button id="btn-clear-search" class="btn-clear-search hidden">×</button>
                     </div>
+                    <div class="filter-options">
+                        <label class="switch-label">
+                            <input type="checkbox" id="switch-favorites-only" class="filter-checkbox">
+                            ★ お気に入りのみ表示
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Articles Tree List -->
@@ -181,7 +187,10 @@
                     <div id="reading-viewport" class="reading-viewport font-size-medium" data-font-size="medium">
                         <!-- Verbatim article text wrapped in sentence spans goes here -->
                         <div class="article-body-wrapper">
-                            <h2 id="article-view-title" class="article-view-title">第一条 <span id="article-view-caption">（天皇の地位、国民主権）</span></h2>
+                            <div class="article-title-row">
+                                <h2 id="article-view-title" class="article-view-title">第一条 <span id="article-view-caption">（天皇の地位、国民主権）</span></h2>
+                                <button id="btn-favorite-article" class="btn-favorite" title="お気に入りに登録/解除">★</button>
+                            </div>
                             <div id="article-view-content" class="article-view-content">
                                 <!-- Sentences dynamically injected here -->
                             </div>

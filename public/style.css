@@ -624,8 +624,18 @@ html, body {
     color: var(--color-accent);
     background: rgba(46, 134, 222, 0.1);
     padding: 2px 8px;
-    border-radius: 6px;
+    border-radius: 4px;
 }
+
+.filter-options {
+    margin-top: 12px;
+    padding: 0 4px;
+}
+.filter-checkbox {
+    margin-right: 8px;
+    accent-color: var(--color-primary);
+}
+
 .label-chapter-tag {
     font-size: 0.75rem;
     color: var(--color-text-secondary);
@@ -711,13 +721,41 @@ html, body {
 .article-body-wrapper {
     max-width: 100%;
 }
+.article-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+}
 .article-view-title {
     font-size: 1.15em;
     font-weight: 700;
-    margin-bottom: 24px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
     line-height: 1.4;
+    flex: 1;
+}
+.btn-favorite {
+    background: none;
+    border: none;
+    color: var(--color-text-tertiary);
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0 8px;
+    margin-left: 12px;
+    transition: all 0.2s ease;
+    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn-favorite:hover {
+    transform: scale(1.1);
+}
+.btn-favorite.active {
+    color: #f1c40f; /* Gold color for star */
+    text-shadow: 0 0 10px rgba(241, 196, 15, 0.4);
 }
 #article-view-caption {
     font-size: 0.85em;

@@ -20,6 +20,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let wakeLock = null;
     let speechRate = 1.0;
     
+    // Favorites State
+    let favoritesOnly = false;
+    let bookmarks = {};
+    try {
+        bookmarks = JSON.parse(localStorage.getItem('gyosei_bookmarks')) || {};
+    } catch(e) { bookmarks = {}; }
+
+    function saveBookmarks() {
+        localStorage.setItem('gyosei_bookmarks', JSON.stringify(bookmarks));
+    }
+    
     // UI Layout Configuration
     let fontSize = "medium"; // small, medium, large, xlarge
 
@@ -94,6 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const switchAutoplay = document.getElementById('switch-autoplay');
     const switchFocus = document.getElementById('switch-focus');
     const switchWakelock = document.getElementById('switch-wakelock');
+    const switchFavoritesOnly = document.getElementById('switch-favorites-only');
+    const btnFavoriteArticle = document.getElementById('btn-favorite-article');
 
     // Swipe buttons
     const btnPrevArticle = document.getElementById('btn-prev-article');
@@ -233,6 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentChapter = null;
 
         articles.forEach((art, idx) => {
+            if (favoritesOnly && !isBookmarked(idx)) return;
+
             const chapName = art.chapter || "本則";
             if (!currentChapter || currentChapter.name !== chapName) {
                 currentChapter = {
@@ -411,8 +426,16 @@ document.addEventListener('DOMContentLoaded', () => {
         lblLearningTitle.textContent = art.title;
 
         // Swipe Buttons States
-        btnPrevArticle.disabled = (globalIndex === 0);
-        btnNextArticle.disabled = (globalIndex === lawData.articles.length - 1);
+        btnPrevArticle.disabled = (getPrevPlayableIndex(globalIndex) === -1);
+        btnNextArticle.disabled = (getNextPlayableIndex(globalIndex) === -1);
+
+        // Update Favorite Button State
+        const bookmarkKey = `${lawData.law_num}_${art.title}`;
+        if (bookmarks[bookmarkKey]) {
+            btnFavoriteArticle.classList.add('active');
+        } else {
+            btnFavoriteArticle.classList.remove('active');
+        }
 
         // 2. Clear view content and build verbatim split sentences
         articleViewContent.innerHTML = "";
@@ -483,20 +506,45 @@ document.addEventListener('DOMContentLoaded', () => {
         updateMediaSession();
     }
 
+    function isBookmarked(globalIndex) {
+        if (!lawData || !lawData.articles[globalIndex]) return false;
+        return !!bookmarks[`${lawData.law_num}_${lawData.articles[globalIndex].title}`];
+    }
+
+    function getNextPlayableIndex(currentIndex) {
+        let idx = currentIndex + 1;
+        while (idx < lawData.articles.length) {
+            if (!favoritesOnly || isBookmarked(idx)) return idx;
+            idx++;
+        }
+        return -1;
+    }
+
+    function getPrevPlayableIndex(currentIndex) {
+        let idx = currentIndex - 1;
+        while (idx >= 0) {
+            if (!favoritesOnly || isBookmarked(idx)) return idx;
+            idx--;
+        }
+        return -1;
+    }
+
     function playPrevArticle() {
-        if (activeArticleIndex > 0) {
+        const prevIdx = getPrevPlayableIndex(activeArticleIndex);
+        if (prevIdx !== -1) {
             const autoPlayRestore = isPlaying;
             stopPlayback();
-            loadArticle(activeArticleIndex - 1);
+            loadArticle(prevIdx);
             if (autoPlayRestore) startPlayback();
         }
     }
 
     function playNextArticle() {
-        if (activeArticleIndex < lawData.articles.length - 1) {
+        const nextIdx = getNextPlayableIndex(activeArticleIndex);
+        if (nextIdx !== -1) {
             const autoPlayRestore = isPlaying;
             stopPlayback();
-            loadArticle(activeArticleIndex + 1);
+            loadArticle(nextIdx);
             if (autoPlayRestore) startPlayback();
         }
     }
@@ -779,8 +827,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (s < sentences.length) {
             nextText = sentences[s].text;
         } else {
-            a++;
-            if (a < lawData.articles.length && autoplayEnabled) {
+            a = getNextPlayableIndex(artIdx);
+            if (a !== -1 && autoplayEnabled) {
                 const art = lawData.articles[a];
                 nextText = `${art.title}${art.caption ? `（${art.caption}）` : ''}`;
             }
@@ -898,8 +946,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 stopPlayback();
                 return;
             }
-            nextArtIdx++;
-            if (nextArtIdx >= lawData.articles.length) {
+            nextArtIdx = getNextPlayableIndex(activeArticleIndex);
+            if (nextArtIdx === -1) {
                 stopPlayback();
                 return;
             }
@@ -1049,6 +1097,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Config Toggles Hooking ---
     switchAutoplay.addEventListener('change', () => {
         autoplayEnabled = switchAutoplay.checked;
+    });
+
+    switchFavoritesOnly.addEventListener('change', () => {
+        favoritesOnly = switchFavoritesOnly.checked;
+        if (lawData) {
+            renderSelectorTree(lawData);
+        }
+    });
+
+    btnFavoriteArticle.addEventListener('click', () => {
+        if (!lawData || activeArticleIndex === -1) return;
+        const art = lawData.articles[activeArticleIndex];
+        const bookmarkKey = `${lawData.law_num}_${art.title}`;
+        
+        if (bookmarks[bookmarkKey]) {
+            delete bookmarks[bookmarkKey];
+            btnFavoriteArticle.classList.remove('active');
+        } else {
+            bookmarks[bookmarkKey] = true;
+            btnFavoriteArticle.classList.add('active');
+        }
+        saveBookmarks();
     });
 
     // Wake Lock Toggle
