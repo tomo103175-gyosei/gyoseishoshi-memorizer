@@ -693,6 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /利害関係人/g, replacement: 'りがいかんけいにん' },
             { pattern: /参加人/g, replacement: 'さんかにん' },
             { pattern: /名宛人/g, replacement: 'なあてにん' },
+            { pattern: /名あて人/g, replacement: 'なあてにん' },
             { pattern: /何人/g, replacement: 'なんぴと' },
             { pattern: /約し/g, replacement: 'やくし' },
             { pattern: /遺言者/g, replacement: 'いごんしゃ' },
