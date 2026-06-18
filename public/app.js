@@ -766,6 +766,13 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /その他/g, replacement: 'そのた' },
             { pattern: /当たつた/g, replacement: 'あたった' },
             { pattern: /場合/g, replacement: 'ばあい' },
+            { pattern: /原裁決/g, replacement: 'げんさいけつ' },
+            { pattern: /債権額/g, replacement: 'さいけんがく' },
+            { pattern: /額/g, replacement: 'がく' },
+            { pattern: /生ずべき/g, replacement: 'しょうずべき' },
+            { pattern: /款/g, replacement: 'かん' },
+            { pattern: /([一二三四五六七八九十百千万０-９0-9]+)条の四/g, replacement: '$1じょうのよん' },
+            { pattern: /加重/g, replacement: 'かじゅう' },
 
             
             // Suffix '所' (jo) legal specific readings
