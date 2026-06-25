@@ -683,7 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper: Correct Japanese legal terminology pronunciation for browser TTS
     function correctPronunciation(text) {
         if (!text) return "";
-        let result = text;
+        let result = text.replace(/[\r\n]+/g, '');
 
         // 1. Convert Kanji Numerals followed by a space (e.g. 一　, 二　) into '第一号', '第二号' with an auditory pause comma
         result = result.replace(/(?<=^|[\s　])([一二三四五六七八九十百]+)([　\s])/g, (match, p1, p2) => {
