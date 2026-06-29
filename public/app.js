@@ -772,7 +772,10 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /生ずべき/g, replacement: 'しょうずべき' },
             { pattern: /款/g, replacement: 'かん' },
             { pattern: /([一二三四五六七八九十百千万０-９0-9]+)条の四/g, replacement: '$1じょうのよん' },
+            { pattern: /([一二三四五六七八九十百千万０-９0-9]+)条の二/g, replacement: '$1じょうのに' },
             { pattern: /加重/g, replacement: 'かじゅう' },
+            { pattern: /当たつて/g, replacement: 'あたって' },
+            { pattern: /もつて/g, replacement: 'もって' },
 
             
             // Suffix '所' (jo) legal specific readings
