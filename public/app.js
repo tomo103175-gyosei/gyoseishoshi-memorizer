@@ -785,6 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { pattern: /前条/g, replacement: 'ぜんじょう' },
             { pattern: /留置権者/g, replacement: 'りゅうちけんじゃ' },
             { pattern: /賃貸/g, replacement: 'ちんたい' },
+            { pattern: /誤つた/g, replacement: 'あやまった' },
 
             
             // Suffix '所' (jo) legal specific readings
